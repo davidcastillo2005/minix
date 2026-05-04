@@ -96,13 +96,26 @@ int do_noquantum(message *m_ptr)
 	}
 
 	rmp = &schedproc[proc_nr_n];
+	
+	/* Aumentar contador de quantums agotados consecutivos */
+	rmp->consec_quanta++;
+	
 	if (rmp->priority < MIN_USER_Q) {
 		rmp->priority += 1; /* lower priority */
+	}
+
+	/* Penalización por uso intensivo de CPU */
+	if (rmp->consec_quanta >= 3){
+		if (rmp->priority < MIN_USER_Q){
+			rmp->priority += 1;
+		}
+		rmp->consec_quanta = 0;
 	}
 
 	if ((rv = schedule_process_local(rmp)) != OK) {
 		return rv;
 	}
+
 	return OK;
 }
 
@@ -361,6 +374,9 @@ void balance_queues(void)
 				rmp->priority -= 1; /* increase priority */
 				schedule_process_local(rmp);
 			}
+			
+			/* Reiniciar el contador de quantums agotados consecutivos */
+			rmp->consec_quanta = 0;
 		}
 	}
 
