@@ -89,18 +89,23 @@ int do_noquantum(message *m_ptr)
 	register struct schedproc *rmp;
 	int rv, proc_nr_n;
 
+    //Advertencia de error
 	if (sched_isokendpt(m_ptr->m_source, &proc_nr_n) != OK) {
 		printf("SCHED: WARNING: got an invalid endpoint in OOQ msg %u.\n",
 		m_ptr->m_source);
 		return EBADEPT;
 	}
 
+    //Obtener proceso
 	rmp = &schedproc[proc_nr_n];
+    //Disminuir prioridad
 	if (rmp->priority < MIN_USER_Q) {
-		rmp->priority += 1; /* lower priority */
+		rmp->priority += 1;
 	}
+    //Incrementar contador de quantums agotados
+    rmp->consumed_quantums += 1;
 
-	if ((rv = schedule_process_local(rmp)) != OK) {
+    if ((rv = schedule_process_local(rmp)) != OK) {
 		return rv;
 	}
 	return OK;
@@ -119,7 +124,7 @@ int do_stop_scheduling(message *m_ptr)
 		return EPERM;
 
 	if (sched_isokendpt(m_ptr->m_lsys_sched_scheduling_stop.endpoint,
-		    &proc_nr_n) != OK) {
+		&proc_nr_n) != OK) {
 		printf("SCHED: WARNING: got an invalid endpoint in OOQ msg "
 		"%d\n", m_ptr->m_lsys_sched_scheduling_stop.endpoint);
 		return EBADEPT;
@@ -354,13 +359,21 @@ void balance_queues(void)
 {
 	struct schedproc *rmp;
 	int r, proc_nr;
+    int N = 3;
 
-	for (proc_nr=0, rmp=schedproc; proc_nr < NR_PROCS; proc_nr++, rmp++) {
+    for (proc_nr=0, rmp=schedproc; proc_nr < NR_PROCS; proc_nr++, rmp++) {
 		if (rmp->flags & IN_USE) {
-			if (rmp->priority > rmp->max_priority) {
-				rmp->priority -= 1; /* increase priority */
-				schedule_process_local(rmp);
+            
+            //Si consumio N o mas quantums y no posee la peor prioridad Bajar la prioridad (Aumentar # Prioridad)
+			if (rmp->consumed_quantums >= N && rmp->priority < MIN_USER_Q) {
+				rmp->priority += 1;
+				rmp->consumed_quantums = 0;
 			}
+			//Si no consumio quantums y no posee la maxima prioridad Subir la prioridad (Bajar # Prioridad)
+			else if (rmp->consumed_quantums == 0 && rmp->priority > rmp->max_priority){
+				rmp->priority -= 1;
+			}
+			schedule_process_local(rmp);
 		}
 	}
 
