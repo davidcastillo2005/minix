@@ -367,12 +367,12 @@ void balance_queues(void)
             //Si consumio N o mas quantums y no posee la peor prioridad Bajar la prioridad (Aumentar # Prioridad)
 			if (rmp->consumed_quantums >= N && rmp->priority < MIN_USER_Q) {
 				rmp->priority += 1;
-				rmp->consumed_quantums = 0;
 			}
 			//Si no consumio quantums y no posee la maxima prioridad Subir la prioridad (Bajar # Prioridad)
 			else if (rmp->consumed_quantums == 0 && rmp->priority > rmp->max_priority){
 				rmp->priority -= 1;
 			}
+			rmp->consumed_quantums = 0;
 			schedule_process_local(rmp);
 		}
 	}
